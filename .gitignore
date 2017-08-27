@@ -22,5 +22,8 @@ erl_crash.dump
 #Mix lock file
 mix.lock
 
+# Severs directory
+/servers/
+
 # File with secret config (for later)
 /config/secret.exs

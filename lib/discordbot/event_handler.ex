@@ -2,24 +2,34 @@ defmodule DiscordBot.EventHandlers do
     use Nostrum.Consumer
     alias Nostrum.Api
 
+    # Load the servers right away into here.
+    @servers DiscordBot.Server.load_servers()
+
     def start_link do
         Consumer.start_link(__MODULE__, :ok)
     end
 
     def handle_event({:READY, _, _w_state}, state) do
         dt = DateTime.utc_now
+        # Api.update_status(:online, "Loggin' the logs")
         IO.puts("Bot ready at #{dt.month}/#{dt.day}/#{dt.year} #{dt.hour}:#{dt.minute}:#{dt.second}")
         {:ok, state}
     end
 
     def handle_event({:MESSAGE_CREATE, {msg}, _ws_state}, state) do
-
        if !is_bot?(msg.author) do
             # Let's log the messages into our cache if the server exists inside of the list
             case Api.get_guild(Api.get_channel!(msg.channel_id)["guild_id"]) do
                 {:ok, guild} ->
-                    json = ~s({"user": {"name": "#{msg.author.username}", "id": #{msg.author.id}, "discriminator": #{msg.author.discriminator}, "avatar": "#{msg.author.avatar}"}, "channel_id": #{msg.channel_id}, "guild_id": #{guild.id}, "content": "#{msg.content}"})
-                    Redix.command(:redix, ["SETEX", "logger:#{msg.channel_id}:#{msg.id}", 1209600, json])
+                    server = find_server(String.to_integer(guild.id))
+
+                    if server != nil do
+                        if server.cache_messages do
+                            json = ~s({"user": {"name": "#{msg.author.username}", "id": #{msg.author.id}, "discriminator": #{msg.author.discriminator}, "avatar": "#{msg.author.avatar}"}, "channel_id": #{msg.channel_id}, "guild_id": #{guild.id}, "content": "#{msg.content}"})
+                            Redix.command(:redix, ["SETEX", "logger:#{msg.channel_id}:#{msg.id}", 1209600, json])
+                        end
+                    end
+
                 {:error, _err} -> 
                     IO.puts "Error getting guild"
             end
@@ -38,24 +48,33 @@ defmodule DiscordBot.EventHandlers do
 
         if data != nil do # we found a message
             # Let's delete it from the cache 
-            {:ok, am} = Redix.command(:redix, ["DEL", redix_query])
-
-            # TODO: Remove this in prod
-            if am >= 1 do
-                IO.puts "Successfully deleted key."
-            else
-                IO.puts "Failed to delete key."
-            end
+            Redix.command(:redix, ["DEL", redix_query])
 
             json = Poison.decode!(data)
 
             if json != nil do
-                # Make server based for channel
-                DiscordBot.Logger.send_log(299653045699084289, json["user"], "**Message sent by <@!#{json["user"]["id"]}> deleted in <##{json["channel_id"]}>**\n#{json["content"]}", 0xcc1717)
+                server = find_server(json["guild_id"])
+
+                if server != nil && server.log_channel != nil do
+                    DiscordBot.Logger.send_log(server.log_channel, json["user"], "**Message sent by <@!#{json["user"]["id"]}> deleted in <##{channel_id}>**\n#{json["content"]}", 0xcc1717)
+                end
             end
             
         else
-            IO.puts "Data was nil"
+            guild = case Api.get_guild(Api.get_channel!(channel_id)["guild_id"]) do
+                {:ok, g} ->
+                    g
+                _ ->
+                    nil
+                end
+
+            if guild != nil do
+                server = find_server(String.to_integer(guild.id))
+
+                if server != nil && server.log_channel != nil do
+                    DiscordBot.Logger.send_guild_log(server.log_channel, guild, "**Unlogged message deleted in <##{channel_id}>**", 0xcc1717)
+                end
+            end
         end
 
         {:ok, state}
@@ -66,7 +85,13 @@ defmodule DiscordBot.EventHandlers do
         {:ok, state}
     end
 
-    def is_bot?(user) do
+    defp is_bot?(user) do
         Map.has_key?(user, :bot)
+    end
+
+    defp find_server(server_id) do
+        Enum.find(@servers, fn(server) ->
+           server.id == server_id
+        end)
     end
 end
