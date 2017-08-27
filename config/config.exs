@@ -27,15 +27,14 @@ use Mix.Config
 # Configuration from the imported file will override the ones defined
 # here (which is why it is important to import them last).
 #
-#     import_config "#{Mix.env}.exs"
+import_config "secret.exs"
 
-config :nostrum,
-  token: "-- to do --"
+# Moved nostrum token stuff to secret.exs for obvious reasons :)
 
 config :logger,
   level: :warn
 
 config :discord_bot, DiscordBot.Scheduler,
   jobs: [
-      {"* * * * *", {DiscordBot.Backup, :backup, []}}
+      {"@daily", {DiscordBot.Backup, :backup, []}}
   ]
