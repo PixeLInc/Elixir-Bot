@@ -24,7 +24,9 @@ defmodule DiscordBot.Server do
             Enum.map(fn server ->
                 IO.puts "Loading #{server}..."
                 contents = File.read! server
-                Poison.decode!(contents, as: %ServerData{})
+                serv_data = Poison.decode!(contents, as: %ServerData{})
+
+                :ets.insert(:servers_map, {serv_data.id, serv_data}) # Insert with id as key for fast lookups
             end)
 
         serv_list

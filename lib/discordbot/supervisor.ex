@@ -12,6 +12,8 @@ defmodule DiscordBot.Supervisor do
              worker(Redix, [[], [name: :redix]]), # Global variable thx
         ]
 
+        setup_ets()
+
         Process.flag(:trap_exit, true)
         supervise(children, strategy: :one_for_one)
     end
@@ -19,5 +21,9 @@ defmodule DiscordBot.Supervisor do
     def terminate(_reason, _state) do
         IO.puts("Exiting...")
         :ok
+    end
+
+    defp setup_ets do
+        :ets.new(:servers_map, [:set, :public, :named_table])
     end
 end
