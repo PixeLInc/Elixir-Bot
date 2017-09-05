@@ -1,6 +1,12 @@
 defmodule DiscordBot.EventHandlers do
     use Nostrum.Consumer
     alias Nostrum.Api
+    
+    # Color constants for ease
+    @informative 0x00aeff # Blueish
+    @bad 0xff0000 # Red
+    @good 0x17ff00 # Green
+
 
     def start_link do
         DiscordBot.Server.load_servers()
@@ -12,6 +18,39 @@ defmodule DiscordBot.EventHandlers do
         dt = DateTime.utc_now
         # Api.update_status(:online, "Loggin' the logs")
         IO.puts("Bot ready at #{dt.month}/#{dt.day}/#{dt.year} #{dt.hour}:#{dt.minute}:#{dt.second}")
+        {:ok, state}
+    end
+
+    def handle_event({:GUILD_ROLE_CREATE, {gid, _role}, _ws_state}, state) do
+        server = find_server(gid)
+
+        guild = guild_or_get(gid)
+
+        if guild != nil && server != nil do
+            if server.log_channel != nil do
+                DiscordBot.Logger.send_guild_log(server.log_channel, guild, "**A new role has been created**", @informative)
+            end
+        end
+        
+
+        {:ok, state}
+    end
+
+    def handle_event({:GUILD_ROLE_DELETE, {gid, role}, _ws_state}, state) do
+        server = find_server(gid)
+
+        guild = guild_or_get(gid)
+
+        if guild != nil && server != nil do
+            if server.log_channel != nil do
+                message = "**A role has been deleted**"
+                # if role.name != nil do
+                #     message = "**The role #{role.name} has been deleted**"
+                # end
+                DiscordBot.Logger.send_guild_log(server.log_channel, guild, message, @informative)
+            end
+        end
+
         {:ok, state}
     end
 
@@ -29,6 +68,8 @@ defmodule DiscordBot.EventHandlers do
             Api.create_message(owner_dm.id, "Hey! I have just joined your server.\nI created a server profile for you, but currently it cannot be edited. Sorry! \nIf you have any questions, contact PixeL#7065 on Discord.")
         end
 
+        DiscordBot.Server.create_server_profile(guild)
+
         {:ok, state}
     end
 
@@ -36,8 +77,8 @@ defmodule DiscordBot.EventHandlers do
         server = find_server(id)
 
         if server != nil do
-            if server.log_bans do 
-                DiscordBot.Logger.send_log(server.log_channel, create_user_json(data.user), "**User has been banned!**", 0xff0000)
+            if server.log_channel != nil && server.log_bans do 
+                DiscordBot.Logger.send_log(server.log_channel, create_user_json(data.user), "**User has been banned!**", @bad)
             end
         end
 
@@ -48,8 +89,33 @@ defmodule DiscordBot.EventHandlers do
         server = find_server(id)
 
         if server != nil do
-            if server.log_bans do
-                DiscordBot.Logger.send_log(server.log_channel, create_user_json(data.user), "**User has been unbanned!**", 0x27ff00)
+            if server.log_channel != nil && server.log_bans do
+                DiscordBot.Logger.send_log(server.log_channel, create_user_json(data.user), "**User has been unbanned!**", @good)
+            end
+        end
+
+        {:ok, state}
+    end
+
+    def handle_event({:GUILD_MEMBER_ADD, {member}, _ws_state}, state) do
+        server = find_server(member.guild_id)
+
+        if server != nil do
+            if server.log_channel != nil && server.log_join do
+                # TODO: Figure out default channel and send them a nice toasty welcome message set by the server owner
+                DiscordBot.Logger.send_log(server.log_channel, create_user_json(member.user), "**User has joined the server**", @good)
+            end
+        end
+        {:ok, state}
+    end
+
+    def handle_event({:GUILD_MEMBER_REMOVE, {member}, _ws_state}, state) do
+        server = find_server(member.guild_id)
+
+        if server != nil do
+            if server.log_channel != nil && server.log_leave do
+                #TODO: Default channel, send leave message.
+                DiscordBot.Logger.send_log(server.log_channel, create_user_json(member.user), "**User has left the server**", @bad)
             end
         end
 
@@ -59,27 +125,59 @@ defmodule DiscordBot.EventHandlers do
     def handle_event({:MESSAGE_CREATE, {msg}, _ws_state}, state) do
        if !is_bot?(msg.author) do
             # Let's log the messages into our cache if the server exists inside of the list
-            channel = Api.get_channel!(msg.channel_id)
+            channel = channel_or_get(msg.channel_id)
             if channel != nil do
-                case Api.get_guild(channel["guild_id"]) do
-                    {:ok, guild} ->
-                        IO.puts "(#{guild.name}<#{channel["name"]}>) #{msg.author.username}: #{msg.content}"
-    
-                        server = find_server(String.to_integer(guild.id))
-    
-                        if server != nil do
-                            if server.cache_messages do
-                                json = ~s({"user": {"name": "#{msg.author.username}", "id": #{msg.author.id}, "discriminator": #{msg.author.discriminator}, "avatar": "#{msg.author.avatar}"}, "channel_id": #{msg.channel_id}, "guild_id": #{guild.id}, "content": "#{msg.content}"})
-                                Redix.command(:redix, ["SETEX", "logger:#{msg.channel_id}:#{msg.id}", 1209600, json])
-                            end
+                guild = guild_or_get(channel.guild_id)
+                
+                if guild != nil do
+                    IO.puts "(#{guild.name}<#{channel.name}>) #{msg.author.username}: #{msg.content}"
+
+                    server = find_server(guild.id)
+
+                    if server != nil do
+                        if server.cache_messages do
+                            json = ~s({"user": {"name": "#{msg.author.username}", "id": #{msg.author.id}, "discriminator": #{msg.author.discriminator}, "avatar": "#{msg.author.avatar}"}, "channel_id": #{msg.channel_id}, "guild_id": #{guild.id}, "content": "#{msg.content}"})
+                            Redix.command!(:redix, ["SETEX", "logger:#{msg.channel_id}:#{msg.id}", 1209600, json])
                         end
-    
-                    {:error, _err} -> 
-                        IO.puts "Error getting guild"
+                    end
                 end
             end
         end
         
+        {:ok, state}
+    end
+
+    def handle_event({:MESSAGE_UPDATE, {updated_message}, _ws_state}, state) do # smh why cant you store the channel and guild in message :(
+        channel_id = updated_message.channel_id
+
+        # might as well grab the channel and guild while im up here
+        channel = channel_or_get(channel_id)
+
+        if channel != nil do
+            guild = guild_or_get(channel.guild_id)
+            server = find_server(guild.id)
+            if guild != nil && server != nil do
+                # We need to get the old message
+                redix_query = "logger:#{channel_id}:#{updated_message.id}"
+        
+                {:ok, data} = Redix.command(:redix, ["GET", redix_query])
+        
+                if data != nil do
+                    # Now we need to store the old content and then update it 
+                    json = Poison.decode!(data)
+
+                    # Log Edit
+                    DiscordBot.Logger.send_edit_log(server.log_channel, create_user_json(updated_message.author), "**Messaged edited in ##{channel_id}>**", json["content"], updated_message.content, @informative)
+                    
+                    # now we have to just reset the ttl and stuff since you can't update :?
+                    njson = ~s({"user": {"name": "#{json["user"]["name"]}", "id": #{json["user"]["id"]}, "discriminator": #{json["user"]["discriminator"]}, "avatar": "#{json["user"]["avatar"]}"}, "channel_id": #{json["channel_id"]}, "guild_id": #{json["guild_id"]}, "content": "#{updated_message.content}"})
+                    
+                    Redix.command!(:redix, ["SETEX", "logger:#{channel_id}:#{updated_message.id}", 1209600, njson])
+                end
+        
+            end
+        end
+
         {:ok, state}
     end
 
@@ -101,23 +199,18 @@ defmodule DiscordBot.EventHandlers do
                 server = find_server(json["guild_id"])
 
                 if server != nil && server.log_channel != nil do
-                    DiscordBot.Logger.send_log(server.log_channel, json["user"], "**Message sent by <@!#{json["user"]["id"]}> deleted in <##{channel_id}>**\n#{json["content"]}", 0xcc1717)
+                    DiscordBot.Logger.send_log(server.log_channel, json["user"], "**Message sent by <@!#{json["user"]["id"]}> deleted in <##{channel_id}>**\n#{json["content"]}", @informative)
                 end
             end
             
         else
-            guild = case Api.get_guild(Api.get_channel!(channel_id)["guild_id"]) do
-                {:ok, g} ->
-                    g
-                _ ->
-                    nil
-                end
+            guild = guild_or_get(channel_or_get(channel_id)["guild_id"])
 
             if guild != nil do
                 server = find_server(String.to_integer(guild.id))
 
                 if server != nil && server.log_channel != nil do
-                    DiscordBot.Logger.send_guild_log(server.log_channel, guild, "**Unlogged message deleted in <##{channel_id}>**", 0xcc1717)
+                    DiscordBot.Logger.send_guild_log(server.log_channel, guild, "**Unlogged message deleted in <##{channel_id}>**", @informative)
                 end
             end
         end
@@ -150,5 +243,31 @@ defmodule DiscordBot.EventHandlers do
             "id" => user.id,
             "avatar" => user.avatar,
         }
+    end
+
+    defp channel_or_get(channel_id) do
+        if channel_id != nil do
+            channel = case Nostrum.Cache.ChannelCache.get(id: channel_id) do
+                {:error, _atom} ->
+                    Api.get_channel!(channel_id)
+                chan -> 
+                    chan
+            end
+    
+            channel
+        end
+    end
+
+    defp guild_or_get(guild_id) do
+        if guild_id != nil do
+            guild = case Nostrum.Cache.Guild.GuildServer.get(id: guild_id) do
+                {:ok, g} ->
+                    g
+                {:error, _reason} -> 
+                    Api.get_guild!(guild_id)
+            end
+    
+            guild
+        end
     end
 end

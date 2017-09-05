@@ -3,31 +3,61 @@ defmodule DiscordBot.Logger do
 
     # Add server support
     def send_log(channel_id, user_json, message, color) do
-        Api.create_message!(channel_id, [content: "", embed: %{
-            description: message,
-            author: %{
-                name: "#{user_json["name"]}##{user_json["discriminator"]}",
-                icon_url: avatar_url(user_json["id"], user_json["avatar"]),
-            },
-            footer: %{
-                text: "ID: #{user_json["id"]}",
-            },
-            color: color
-        }], false)
+        if channel_id != nil do # just in case.
+            Api.create_message!(channel_id, [content: "", embed: %{
+                description: message,
+                author: %{
+                    name: "#{user_json["name"]}##{user_json["discriminator"]}",
+                    icon_url: avatar_url(user_json["id"], user_json["avatar"]),
+                },
+                footer: %{
+                    text: "ID: #{user_json["id"]}",
+                },
+                color: color
+            }], false)
+        end
     end
 
     def send_guild_log(channel_id, guild, message, color) do
-        Api.create_message!(channel_id, [content: "", embed: %{
-            description: message,
-            author: %{
-                name: "#{guild.name}",
-                icon_url: server_url(guild.id, guild.icon), # guild.icon is nil for some odd reason..
-            },
-            footer: %{
-                text: "ID: #{guild.id}",
-            },
-            color: color
-        }], false)
+        if channel_id != nil do
+            Api.create_message!(channel_id, [content: "", embed: %{
+                description: message,
+                author: %{
+                    name: "#{guild.name}",
+                    icon_url: server_url(guild.id, guild.icon), # guild.icon is nil for some odd reason..
+                },
+                footer: %{
+                    text: "ID: #{guild.id}",
+                },
+                color: color
+            }], false)
+        end
+    end
+
+    def send_edit_log(channel_id, user_json, message, prev, cur, color) do
+        if channel_id != nil do
+            Api.create_message!(channel_id, [content: "", embed: %{
+                description: message,
+                author: %{
+                    name: "#{user_json["name"]}##{user_json["discriminator"]}",
+                    icon_url: avatar_url(user_json["id"], user_json["avatar"]),
+                },
+                footer: %{
+                    text: "ID: #{user_json["id"]}",
+                },
+                color: color,
+                fields: [
+                    %{
+                        name: "Before",
+                        value: prev,
+                    },
+                    %{
+                        name: "After",
+                        value: cur,
+                    },
+                ]
+            }], false)
+        end
     end
 
     # Helper function since nostrum doesnt have it

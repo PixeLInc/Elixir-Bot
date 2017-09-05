@@ -31,4 +31,30 @@ defmodule DiscordBot.Server do
 
         serv_list
     end
+
+    def create_server_profile(guild) do
+        server_data = %ServerData {
+            :name => guild.name,
+            :id => guild.id,
+            :log_channel => nil,
+            :log_join => true,
+            :log_leave => true,
+            :log_bans => true,
+            :auto_role => nil,
+            :cache_messages => true,
+            :join_message => "Welcome to the server, {user}!",
+            :leave_message => "Oh noes, {user} left the server :(",
+            :ban_message => "{user} just got the ban hammer!",
+            :leave_on_master => false,
+        }
+
+        :ets.insert(:servers_map, {guild.id, server_data})
+
+        case File.write("servers/#{guild.id}.json", Poison.encode!(server_data), [:binary]) do
+            :ok -> 
+                IO.puts "#{guild.id} saved successfully!"
+            {:error, _posix} ->
+                IO.puts "Failed to create server file"
+        end
+    end
 end
