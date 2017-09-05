@@ -167,7 +167,7 @@ defmodule DiscordBot.EventHandlers do
                     json = Poison.decode!(data)
 
                     # Log Edit
-                    DiscordBot.Logger.send_edit_log(server.log_channel, create_user_json(updated_message.author), "**Messaged edited in ##{channel_id}>**", json["content"], updated_message.content, @informative)
+                    DiscordBot.Logger.send_edit_log(server.log_channel, create_user_json(updated_message.author), "**Messaged edited in <##{channel_id}>**", json["content"], updated_message.content, @informative)
                     
                     # now we have to just reset the ttl and stuff since you can't update :?
                     njson = ~s({"user": {"name": "#{json["user"]["name"]}", "id": #{json["user"]["id"]}, "discriminator": #{json["user"]["discriminator"]}, "avatar": "#{json["user"]["avatar"]}"}, "channel_id": #{json["channel_id"]}, "guild_id": #{json["guild_id"]}, "content": "#{updated_message.content}"})

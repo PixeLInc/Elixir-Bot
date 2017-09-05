@@ -27,3 +27,5 @@ mix.lock
 
 # File with secret config (for later)
 /config/secret.exs
+
+start.bat
