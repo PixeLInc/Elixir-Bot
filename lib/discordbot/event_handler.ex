@@ -38,15 +38,15 @@ defmodule DiscordBot.EventHandlers do
 
     def handle_event({:GUILD_ROLE_DELETE, {gid, role}, _ws_state}, state) do
         server = find_server(gid)
-
         guild = guild_or_get(gid)
 
         if guild != nil && server != nil do
             if server.log_channel != nil do
                 message = "**A role has been deleted**"
-                # if role.name != nil do
-                #     message = "**The role #{role.name} has been deleted**"
-                # end
+                message = if role.name != nil do
+                    "**The role '#{role.name}' has been deleted**"
+                end
+                
                 DiscordBot.Logger.send_guild_log(server.log_channel, guild, message, @informative)
             end
         end
@@ -126,11 +126,17 @@ defmodule DiscordBot.EventHandlers do
        if !is_bot?(msg.author) do
             # Let's log the messages into our cache if the server exists inside of the list
             channel = channel_or_get(msg.channel_id)
-            if channel != nil do
+            if channel != nil && Map.has_key?(channel, :guild_id) do
                 guild = guild_or_get(channel.guild_id)
                 
                 if guild != nil do
                     IO.puts "(#{guild.name}<#{channel.name}>) #{msg.author.username}: #{msg.content}"
+
+                    # Let's parse the command if there is one and such.
+                    spawn fn -> 
+                        # I mean, since we're here.. throw in the guild and channel lol
+                        Commands.command_parser({msg, channel, guild}, state)
+                    end
 
                     server = find_server(guild.id)
 
@@ -153,7 +159,7 @@ defmodule DiscordBot.EventHandlers do
         # might as well grab the channel and guild while im up here
         channel = channel_or_get(channel_id)
 
-        if channel != nil do
+        if channel != nil && Map.has_key?(channel, :guild_id) do
             guild = guild_or_get(channel.guild_id)
             server = find_server(guild.id)
             if guild != nil && server != nil do
@@ -204,13 +210,36 @@ defmodule DiscordBot.EventHandlers do
             end
             
         else
-            guild = guild_or_get(channel_or_get(channel_id)["guild_id"])
+            channel = channel_or_get(channel_id)
+            if channel != nil && Map.has_key?(channel, :guild_id) do
+                guild = guild_or_get(["guild_id"])
+    
+                if guild != nil do
+                    server = find_server(String.to_integer(guild.id))
+    
+                    if server != nil && server.log_channel != nil do
+                        DiscordBot.Logger.send_guild_log(server.log_channel, guild, "**Unlogged message deleted in <##{channel_id}>**", @informative)
+                    end
+                end
+            end
+        end
 
+        {:ok, state}
+    end
+
+    def handle_event({:MESSAGE_DELETE_BULK, {updated_messages}, _ws_state}, state) do
+        # First we need to get the channel id from the map | %{channel_id, ids: [message_ids]}
+        cid = updated_messages.channel_id
+        channel = channel_or_get(cid)
+
+        if channel != nil do
+            guild = guild_or_get(channel.guild_id)
             if guild != nil do
-                server = find_server(String.to_integer(guild.id))
-
+                server = find_server(guild.id)
                 if server != nil && server.log_channel != nil do
-                    DiscordBot.Logger.send_guild_log(server.log_channel, guild, "**Unlogged message deleted in <##{channel_id}>**", @informative)
+                    message_count = Enum.count(updated_messages)
+
+                    DiscordBot.Logger.send_guild_log(server.log_channel, guild, "**#{message_count} messages deleted in <##{cid}>**", @informative)
                 end
             end
         end
@@ -227,7 +256,7 @@ defmodule DiscordBot.EventHandlers do
         Map.has_key?(user, :bot)
     end
 
-    defp find_server(server_id) do
+    def find_server(server_id) do
         case :ets.lookup(:servers_map, server_id) do
             [{_id, data}] ->
                 data

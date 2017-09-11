@@ -26,10 +26,16 @@ defmodule DiscordBot.Server do
                 contents = File.read! server
                 serv_data = Poison.decode!(contents, as: %ServerData{})
 
+                IO.puts "Loaded #{serv_data.name}"
+
                 :ets.insert(:servers_map, {serv_data.id, serv_data}) # Insert with id as key for fast lookups
             end)
 
         serv_list
+    end
+
+    def save_server(server_id, server_map) do
+        File.write!("servers/#{server_id}.json", Poison.encode!(server_map), [:binary])
     end
 
     def create_server_profile(guild) do
