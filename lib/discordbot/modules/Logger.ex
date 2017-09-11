@@ -2,6 +2,22 @@ defmodule DiscordBot.Logger do
     alias Nostrum.Api
 
     # Add server support
+    def send_log(channel_id, %Nostrum.Struct.Guild{} = guild, message, color) do
+        if channel_id != nil do
+            Api.create_message!(channel_id, [content: "", embed: %{
+                description: message,
+                author: %{
+                    name: "#{guild.name}",
+                    icon_url: server_url(guild.id, guild.icon), # guild.icon is nil for some odd reason..
+                },
+                footer: %{
+                    text: "ID: #{guild.id}",
+                },
+                color: color
+            }], false)
+        end
+    end
+
     def send_log(channel_id, user_json, message, color) do
         if channel_id != nil do # just in case.
             Api.create_message!(channel_id, [content: "", embed: %{
@@ -12,22 +28,6 @@ defmodule DiscordBot.Logger do
                 },
                 footer: %{
                     text: "ID: #{user_json["id"]}",
-                },
-                color: color
-            }], false)
-        end
-    end
-
-    def send_guild_log(channel_id, guild, message, color) do
-        if channel_id != nil do
-            Api.create_message!(channel_id, [content: "", embed: %{
-                description: message,
-                author: %{
-                    name: "#{guild.name}",
-                    icon_url: server_url(guild.id, guild.icon), # guild.icon is nil for some odd reason..
-                },
-                footer: %{
-                    text: "ID: #{guild.id}",
                 },
                 color: color
             }], false)

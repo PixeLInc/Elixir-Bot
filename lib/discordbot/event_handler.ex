@@ -28,7 +28,7 @@ defmodule DiscordBot.EventHandlers do
 
         if guild != nil && server != nil do
             if server.log_channel != nil do
-                DiscordBot.Logger.send_guild_log(server.log_channel, guild, "**A new role has been created**", @informative)
+                DiscordBot.Logger.send_log(server.log_channel, guild, "**A new role has been created**", @informative)
             end
         end
         
@@ -47,7 +47,7 @@ defmodule DiscordBot.EventHandlers do
                     "**The role '#{role.name}' has been deleted**"
                 end
                 
-                DiscordBot.Logger.send_guild_log(server.log_channel, guild, message, @informative)
+                DiscordBot.Logger.send_log(server.log_channel, guild, message, @informative)
             end
         end
 
@@ -218,7 +218,7 @@ defmodule DiscordBot.EventHandlers do
                     server = find_server(String.to_integer(guild.id))
     
                     if server != nil && server.log_channel != nil do
-                        DiscordBot.Logger.send_guild_log(server.log_channel, guild, "**Unlogged message deleted in <##{channel_id}>**", @informative)
+                        DiscordBot.Logger.send_log(server.log_channel, guild, "**Unlogged message deleted in <##{channel_id}>**", @informative)
                     end
                 end
             end
@@ -239,7 +239,7 @@ defmodule DiscordBot.EventHandlers do
                 if server != nil && server.log_channel != nil do
                     message_count = Enum.count(updated_messages)
 
-                    DiscordBot.Logger.send_guild_log(server.log_channel, guild, "**#{message_count} messages deleted in <##{cid}>**", @informative)
+                    DiscordBot.Logger.send_log(server.log_channel, guild, "**#{message_count} messages deleted in <##{cid}>**", @informative)
                 end
             end
         end
