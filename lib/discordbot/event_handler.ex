@@ -16,7 +16,7 @@ defmodule DiscordBot.EventHandlers do
 
     def handle_event({:READY, _, _w_state}, state) do
         dt = DateTime.utc_now
-        # Api.update_status(:online, "Loggin' the logs")
+        Api.update_status(:online, "Loggin' the logs")
         IO.puts("Bot ready at #{dt.month}/#{dt.day}/#{dt.year} #{dt.hour}:#{dt.minute}:#{dt.second}")
         {:ok, state}
     end
@@ -212,10 +212,10 @@ defmodule DiscordBot.EventHandlers do
         else
             channel = channel_or_get(channel_id)
             if channel != nil && Map.has_key?(channel, :guild_id) do
-                guild = guild_or_get(["guild_id"])
+                guild = guild_or_get(channel.guild_id)
     
                 if guild != nil do
-                    server = find_server(String.to_integer(guild.id))
+                    server = find_server(guild.id)
     
                     if server != nil && server.log_channel != nil do
                         DiscordBot.Logger.send_log(server.log_channel, guild, "**Unlogged message deleted in <##{channel_id}>**", @informative)

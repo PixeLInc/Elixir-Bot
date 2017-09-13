@@ -73,7 +73,11 @@ defmodule DiscordBot.Logger do
     end
 
     defp server_url(server_id, icon_id) do
-        "https://cdn.discordapp.com/icons/#{server_id}/#{icon_id}.webp"   
+        if icon_id == nil do
+            "https://biharcricketassociation.com/uploads/no_image.png"
+        else
+            "https://cdn.discordapp.com/icons/#{server_id}/#{icon_id}.webp"   
+        end
     end
 
 end

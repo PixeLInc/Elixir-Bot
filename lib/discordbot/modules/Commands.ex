@@ -44,6 +44,10 @@ defmodule Commands do
                         # TODO: Support people to set custom leave and join messages.. | Too lazy atm
                         new_value = convert_to_type(elem(args, 2))
 
+                        new_value = if args_length > 3 do
+                            combine_args(args, 2) # Should combine everything after to_modify.. Keyword: *SHOULD*
+                        end
+
                         if Map.has_key?(server, to_modify) do
                             try do # rescue from an invalid thingy
                                 nserver = Map.put(server, to_modify, new_value)
@@ -108,6 +112,13 @@ ban_message: #{server.ban_message}
             num ->
                 elem(Integer.parse(List.first(num)), 0)
         end
+    end
+
+    defp combine_args(args, to_skip) do
+        args 
+          |> Tuple.to_list
+          |> Enum.slice(to_skip .. -1)
+          |> Enum.join(" ")
     end
 
     # Me, or the owner /shrug
