@@ -22,7 +22,7 @@ defmodule Commands do
     def command_parser({message, channel, guild}, state) do
         # Shouldnt be from a bot since we do that via :MESSAGE_CREATE
         case command_from_message(message, "%") do
-            {nil, content} ->
+            {nil, _content} ->
                 nil # Dont do anything since it's not a command
             {cmd, msg} ->
                 _execute_command({cmd, msg, channel, guild}, message, state)
@@ -41,11 +41,11 @@ defmodule Commands do
                 if args_length >= 3 do
                     if String.downcase(elem(args, 0)) == "m" do
                         to_modify = String.to_atom(elem(args, 1)) # The thing they want to modify in the settings.
-                        # TODO: Support people to set custom leave and join messages.. | Too lazy atm
-                        new_value = convert_to_type(elem(args, 2))
-
-                        new_value = if args_length > 3 do
-                            combine_args(args, 2) # Should combine everything after to_modify.. Keyword: *SHOULD*
+                        new_value = case args_length > 3 do
+                            true -> 
+                                combine_args(args, 2)
+                            false ->
+                                convert_to_type(elem(args, 2))
                         end
 
                         if Map.has_key?(server, to_modify) do
@@ -84,12 +84,47 @@ ban_message: #{server.ban_message}
         end
     end
 
+    # I don't take credit enough for my work :/
+    defp _execute_command({"about", _args, channel, _guild}, _payload, _state) do
+        {:ok, guilds_list} = Api.get_current_users_guilds()
+        guild_count = Enum.count(guilds_list)
+        Api.create_message(channel.id, [content: "", embed: %{
+            fields: [
+                %{
+                    name: "Author",
+                    value: "PixeL",
+                },
+                %{
+                    name: "Langauge",
+                    value: "Elixir v1.5.1",
+                    inline: true,
+                },
+                %{
+                    name: "Library",
+                    value: "Nostrum",
+                    inline: true,
+                },
+                %{
+                    name: "Server Count",
+                    value: "#{guild_count}", # It's gotta be a string
+                },
+                # Add: Server Count / Shard Count / User Count / Channel Count / Memory Stats / etc..
+            ],
+            author: %{
+                name: "PixeL#7065",
+            },
+            footer: %{
+                text: "About - LoggerBot",
+            },
+            color: 0x55ff33,
+        }], false)
+    end
+
     # Default Handler for Invalid Commands
-    defp _execute_command({cmd, _args, _channel, _guild}, _payload, _state) do
+    defp _execute_command({_cmd, _args, _channel, _guild}, _payload, _state) do
         # Fail silently
         # IO.puts "User entered invalid command '#{cmd}'"
     end
-
 
     # Supposedly fast
     defp _take_prefix(full, prefix) do
