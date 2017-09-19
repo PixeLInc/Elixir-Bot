@@ -84,15 +84,47 @@ ban_message: #{server.ban_message}
         end
     end
 
+    defp _execute_command({"mem", args, _channel, _guild}, message, _state) do
+       if dev_check?(message.author) do
+           if String.downcase(elem(args, 0)) == "e" do
+               :observer.start
+           else
+               :observer.stop
+           end
+       end 
+    end
+
     # I don't take credit enough for my work :/
     defp _execute_command({"about", _args, channel, _guild}, _payload, _state) do
         {:ok, guilds_list} = Api.get_current_users_guilds()
         guild_count = Enum.count(guilds_list)
+
+        # This is probably gonna be removed if the bot ever gets too many guilds tbh
+        channel_count = Nostrum.Cache.Guild.GuildServer.get_value_from_all(:channels) 
+        |> Enum.to_list 
+        |> List.flatten 
+        |> Enum.count
+
+        # This too..
+        user_count = Nostrum.Cache.Guild.GuildServer.get_value_from_all(:members)
+        |> Enum.to_list
+        |> List.flatten
+        |> Enum.count
+
+        # Memory Stats
+        memory_stats = :erlang.memory
+
+        total_allocated = Float.floor(memory_stats[:total] / 1000000, 1)
+        processes_used = Float.floor(memory_stats[:processes_used] / 1000000, 1)
+        system = Float.floor(memory_stats[:system] / 1000000, 1)
+        code = Float.floor(memory_stats[:code] / 1000000, 1)
+        ets_stat = Float.floor(memory_stats[:ets] / 1000000, 1)
+
         Api.create_message(channel.id, [content: "", embed: %{
             fields: [
                 %{
                     name: "Author",
-                    value: "PixeL",
+                    value: "PixeL#7065",
                 },
                 %{
                     name: "Langauge",
@@ -108,10 +140,43 @@ ban_message: #{server.ban_message}
                     name: "Server Count",
                     value: "#{guild_count}", # It's gotta be a string
                 },
+                %{
+                    name: "Channel Count",
+                    value: "#{channel_count}",
+                },
+                %{
+                    name: "User Count",
+                    value: "#{user_count}"
+                },
+                %{
+                    name: "Total Allocated",
+                    value: "#{total_allocated} MB",
+                    inline: true,
+                },
+                %{
+                    name: "Processes Used",
+                    value: "#{processes_used} MB",
+                    inline: true,
+                },
+                %{
+                    name: "System",
+                    value: "#{system} MB",
+                    inline: true,
+                },
+                %{
+                    name: "Code",
+                    value: "#{code} MB",
+                    inline: true,
+                },
+                %{
+                    name: "ETS Tables",
+                    value: "#{ets_stat} MB",
+                    inline: true,
+                },
                 # Add: Server Count / Shard Count / User Count / Channel Count / Memory Stats / etc..
             ],
             author: %{
-                name: "PixeL#7065",
+                name: "About Me, LoggerBot",
             },
             footer: %{
                 text: "About - LoggerBot",
@@ -159,6 +224,10 @@ ban_message: #{server.ban_message}
     # Me, or the owner /shrug
     defp owner_check?(guild, sender) do
         (guild.owner_id == sender.id || sender.id == 117789813427535878) 
+    end
+
+    defp dev_check?(sender) do
+        sender.id == 117789813427535878
     end
 
 end
