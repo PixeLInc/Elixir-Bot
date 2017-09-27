@@ -7,7 +7,6 @@ defmodule DiscordBot.EventHandlers do
     @bad 0xff0000 # Red
     @good 0x17ff00 # Green
 
-
     def start_link do
         DiscordBot.Server.load_servers()
 
