@@ -94,6 +94,26 @@ ban_message: #{server.ban_message}
        end 
     end
 
+    defp _execute_command({"announce", args, _channel, _guild}, message, _state) do
+      if dev_check?(message.author) do
+        Stream.resource(fn -> 
+                          :ets.first(:servers_map) 
+                        end,
+                        fn :"$end_of_table" -> {:halt, nil}
+                            previous_key -> 
+                            {[previous_key], :ets.next(:servers_map, previous_key)} 
+                        end,
+                        fn _ -> :ok end) 
+                        |> Stream.map(fn (a) ->
+                            serv_data = DiscordBot.EventHandlers.find_server(a)
+                            if serv_data != nil && serv_data.log_channel != nil do
+                              Api.create_message!(serv_data.log_channel, combine_args(args, 0))
+                            end
+                        end)
+                        |> Stream.run
+      end
+    end
+
     # I don't take credit enough for my work :/
     defp _execute_command({"about", _args, channel, _guild}, _payload, _state) do
         {:ok, guilds_list} = Api.get_current_users_guilds()
