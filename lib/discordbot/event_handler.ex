@@ -1,7 +1,7 @@
 defmodule DiscordBot.EventHandlers do
     use Nostrum.Consumer
     alias Nostrum.Api
-    
+
     # Color constants for ease
     @informative 0x00aeff # Blueish
     @bad 0xff0000 # Red
@@ -30,7 +30,7 @@ defmodule DiscordBot.EventHandlers do
                 DiscordBot.Logger.send_log(server.log_channel, guild, "**A new role has been created**", @informative)
             end
         end
-        
+
 
         {:ok, state}
     end
@@ -45,7 +45,7 @@ defmodule DiscordBot.EventHandlers do
                 message = if role.name != nil do
                     "**The role '#{role.name}' has been deleted**"
                 end
-                
+
                 DiscordBot.Logger.send_log(server.log_channel, guild, message, @informative)
             end
         end
@@ -76,7 +76,7 @@ defmodule DiscordBot.EventHandlers do
         server = find_server(id)
 
         if server != nil do
-            if server.log_channel != nil && server.log_bans do 
+            if server.log_channel != nil && server.log_bans do
                 DiscordBot.Logger.send_log(server.log_channel, create_user_json(data.user), "**User has been banned!**", @bad)
             end
         end
@@ -127,12 +127,16 @@ defmodule DiscordBot.EventHandlers do
             channel = channel_or_get(msg.channel_id)
             if channel != nil && Map.has_key?(channel, :guild_id) do
                 guild = guild_or_get(channel.guild_id)
-                
+
                 if guild != nil do
                     IO.puts "(#{guild.name}<#{channel.name}>) #{msg.author.username}: #{msg.content}"
 
+                    msg.attachments |> Enum.each(fn attach ->
+                                         IO.puts "Attachments: #{attach.filename} | #{attach.url}"
+                                       end)
+
                     # Let's parse the command if there is one and such.
-                    spawn fn -> 
+                    spawn fn ->
                         # I mean, since we're here.. throw in the guild and channel lol
                         Commands.command_parser({msg, channel, guild}, state)
                     end
@@ -148,7 +152,7 @@ defmodule DiscordBot.EventHandlers do
                 end
             end
         end
-        
+
         {:ok, state}
     end
 
@@ -164,22 +168,22 @@ defmodule DiscordBot.EventHandlers do
             if guild != nil && server != nil do
                 # We need to get the old message
                 redix_query = "logger:#{channel_id}:#{updated_message.id}"
-        
+
                 {:ok, data} = Redix.command(:redix, ["GET", redix_query])
-        
+
                 if data != nil do
-                    # Now we need to store the old content and then update it 
+                    # Now we need to store the old content and then update it
                     json = Poison.decode!(data)
 
                     # Log Edit
                     DiscordBot.Logger.send_edit_log(server.log_channel, create_user_json(updated_message.author), "**Messaged edited in <##{channel_id}>**", json["content"], updated_message.content, @informative)
-                    
+
                     # now we have to just reset the ttl and stuff since you can't update :?
                     njson = ~s({"user": {"name": "#{json["user"]["name"]}", "id": #{json["user"]["id"]}, "discriminator": "#{json["user"]["discriminator"]}", "avatar": "#{json["user"]["avatar"]}"}, "channel_id": #{json["channel_id"]}, "guild_id": #{json["guild_id"]}, "content": "#{updated_message.content}"})
-                    
+
                     Redix.command!(:redix, ["SETEX", "logger:#{channel_id}:#{updated_message.id}", 1209600, njson])
                 end
-        
+
             end
         end
 
@@ -195,27 +199,30 @@ defmodule DiscordBot.EventHandlers do
         {:ok, data} = Redix.command(:redix, ["GET", redix_query])
 
         if data != nil do # we found a message
-            # Let's delete it from the cache 
+            # Let's delete it from the cache
             Redix.command(:redix, ["DEL", redix_query])
 
-            json = Poison.decode!(data)
+            try do
+              json = Poison.decode!(data)
 
-            if json != nil do
-                server = find_server(json["guild_id"])
+                if json != nil do
+                    server = find_server(json["guild_id"])
 
-                if server != nil && server.log_channel != nil do
-                    DiscordBot.Logger.send_log(server.log_channel, json["user"], "**Message sent by <@!#{json["user"]["id"]}> deleted in <##{channel_id}>**\n#{json["content"]}", @informative)
-                end
+                  if server != nil && server.log_channel != nil do
+                      DiscordBot.Logger.send_log(server.log_channel, json["user"], "**Message sent by <@!#{json["user"]["id"]}> deleted in <##{channel_id}>**\n#{json["content"]}", @informative)
+                  end
+              end
+            rescue
+              e in Poison.SyntaxError -> IO.puts "Error parsing JSON: #{data}"
             end
-            
         else
             channel = channel_or_get(channel_id)
             if channel != nil && Map.has_key?(channel, :guild_id) do
                 guild = guild_or_get(channel.guild_id)
-    
+
                 if guild != nil do
                     server = find_server(guild.id)
-    
+
                     if server != nil && server.log_channel != nil do
                         DiscordBot.Logger.send_log(server.log_channel, guild, "**Unlogged message deleted in <##{channel_id}>**", @informative)
                     end
@@ -226,6 +233,7 @@ defmodule DiscordBot.EventHandlers do
         {:ok, state}
     end
 
+    #TODO: Delete messages from database as well.. :?
     def handle_event({:MESSAGE_DELETE_BULK, {updated_messages}, _ws_state}, state) do
         # First we need to get the channel id from the map | %{channel_id, ids: [message_ids]}
         cid = updated_messages.channel_id
@@ -246,7 +254,7 @@ defmodule DiscordBot.EventHandlers do
         {:ok, state}
     end
 
-    # To stop crashes and such.. 
+    # To stop crashes and such..
     def handle_event(_, state) do
         {:ok, state}
     end
@@ -259,7 +267,7 @@ defmodule DiscordBot.EventHandlers do
         case :ets.lookup(:servers_map, server_id) do
             [{_id, data}] ->
                 data
-            [] -> 
+            [] ->
                 nil
         end
     end
@@ -278,10 +286,10 @@ defmodule DiscordBot.EventHandlers do
             channel = case Nostrum.Cache.ChannelCache.get(id: channel_id) do
                 {:error, _atom} ->
                     Api.get_channel!(channel_id)
-                chan -> 
+                chan ->
                     chan
             end
-    
+
             channel
         end
     end
@@ -291,10 +299,10 @@ defmodule DiscordBot.EventHandlers do
             guild = case Nostrum.Cache.Guild.GuildServer.get(id: guild_id) do
                 {:ok, g} ->
                     g
-                {:error, _reason} -> 
+                {:error, _reason} ->
                     Api.get_guild!(guild_id)
             end
-    
+
             guild
         end
     end

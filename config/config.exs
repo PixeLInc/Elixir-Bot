@@ -35,6 +35,4 @@ config :logger,
   level: :warn
 
 config :discord_bot, DiscordBot.Scheduler,
-  jobs: [
-      {"@daily", {DiscordBot.Backup, :backup, []}}
-  ]
+  jobs: []

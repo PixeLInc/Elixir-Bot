@@ -96,21 +96,14 @@ ban_message: #{server.ban_message}
 
     defp _execute_command({"announce", args, _channel, _guild}, message, _state) do
       if dev_check?(message.author) do
-        Stream.resource(fn -> 
-                          :ets.first(:servers_map) 
-                        end,
-                        fn :"$end_of_table" -> {:halt, nil}
-                            previous_key -> 
-                            {[previous_key], :ets.next(:servers_map, previous_key)} 
-                        end,
-                        fn _ -> :ok end) 
-                        |> Stream.map(fn (a) ->
-                            serv_data = DiscordBot.EventHandlers.find_server(a)
-                            if serv_data != nil && serv_data.log_channel != nil do
-                              Api.create_message!(serv_data.log_channel, combine_args(args, 0))
-                            end
-                        end)
-                        |> Stream.run
+
+        :ets.select(:servers_map, :ets.fun2ms(&(&1)))
+        |> Enum.each(fn {id, server} ->
+            if server != nil && server.log_channel != nil do
+                IO.puts "Fam: #{id}"
+                # Api.create_message!(server.log_channel, combine_args(args, 0))
+              end
+            end)
       end
     end
 

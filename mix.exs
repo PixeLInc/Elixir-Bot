@@ -27,6 +27,7 @@ defmodule DiscordBot.Mixfile do
         {:gun, git: "https://github.com/ninenines/gun.git", override: true},
         {:quantum, ">= 2.0.2"},
         {:redix, ">= 0.0.0"},
+        {:ex2ms, "~> 1.0"}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
     ]
