@@ -57,7 +57,7 @@ defmodule DiscordBot.Server do
         :ets.insert(:servers_map, {guild.id, server_data})
 
         case File.write("servers/#{guild.id}.json", Poison.encode!(server_data), [:binary]) do
-            :ok -> 
+            :ok ->
                 IO.puts "#{guild.id} saved successfully!"
             {:error, _posix} ->
                 IO.puts "Failed to create server file"

@@ -96,20 +96,24 @@ defmodule DiscordBot.EventHandlers do
         {:ok, state}
     end
 
-    def handle_event({:GUILD_MEMBER_ADD, {member}, _ws_state}, state) do
-        server = find_server(member.guild_id)
+    def handle_event({:GUILD_MEMBER_ADD, {gid, member}, _ws_state}, state) do
+        server = find_server(gid)
 
-        if server != nil do
+      if server != nil do
+            if server.auto_role != nil do
+                Api.add_guild_member_role(gid, member.user.id, server.auto_role)
+            end
+
             if server.log_channel != nil && server.log_join do
-                # TODO: Figure out default channel and send them a nice toasty welcome message set by the server owner
-                DiscordBot.Logger.send_log(server.log_channel, create_user_json(member.user), "**User has joined the server**", @good)
+              # TODO: Figure out default channel and send them a nice toasty welcome message set by the server owner
+              DiscordBot.Logger.send_log(server.log_channel, create_user_json(member.user), "**User has joined the server**", @good)
             end
         end
         {:ok, state}
     end
 
-    def handle_event({:GUILD_MEMBER_REMOVE, {member}, _ws_state}, state) do
-        server = find_server(member.guild_id)
+    def handle_event({:GUILD_MEMBER_REMOVE, {gid, member}, _ws_state}, state) do
+        server = find_server(gid)
 
         if server != nil do
             if server.log_channel != nil && server.log_leave do
@@ -213,7 +217,7 @@ defmodule DiscordBot.EventHandlers do
                   end
               end
             rescue
-              e in Poison.SyntaxError -> IO.puts "Error parsing JSON: #{data}"
+              _e in Poison.SyntaxError -> IO.puts "Error parsing JSON: #{data}"
             end
         else
             channel = channel_or_get(channel_id)

@@ -62,21 +62,25 @@ defmodule DiscordBot.Logger do
 
     # Helper function since nostrum doesnt have it
     defp avatar_url(user_id, avatar_id) do
-        format = case String.starts_with?(avatar_id, "a_") do
-            true ->
-                "gif"
-            false ->
-                "webp"
-        end
+        if avatar_id != nil do
+            format = case String.starts_with?(avatar_id, "a_") do
+                  true ->
+                    "gif"
+                false ->
+                    "webp"
+            end
 
-        "https://cdn.discordapp.com/avatars/#{user_id}/#{avatar_id}.#{format}"
+            "https://cdn.discordapp.com/avatars/#{user_id}/#{avatar_id}.#{format}"
+        else
+            "https://cdn.browshot.com/static/images/not-found.png"
+        end
     end
 
     defp server_url(server_id, icon_id) do
         if icon_id == nil do
             "https://biharcricketassociation.com/uploads/no_image.png"
         else
-            "https://cdn.discordapp.com/icons/#{server_id}/#{icon_id}.webp"   
+            "https://cdn.discordapp.com/icons/#{server_id}/#{icon_id}.webp"
         end
     end
 
