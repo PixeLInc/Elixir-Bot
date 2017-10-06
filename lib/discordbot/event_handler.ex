@@ -1,6 +1,7 @@
 defmodule DiscordBot.EventHandlers do
     use Nostrum.Consumer
     alias Nostrum.Api
+    alias RedisPool, as: Redis
 
     # Color constants for ease
     @informative 0x00aeff # Blueish
@@ -150,7 +151,7 @@ defmodule DiscordBot.EventHandlers do
                     if server != nil do
                         if server.cache_messages do
                             json = ~s({"user": {"name": "#{msg.author.username}", "id": #{msg.author.id}, "discriminator": "#{msg.author.discriminator}", "avatar": "#{msg.author.avatar}"}, "channel_id": #{msg.channel_id}, "guild_id": #{guild.id}, "content": "#{msg.content}"})
-                            Redix.command!(:redix, ["SETEX", "logger:#{msg.channel_id}:#{msg.id}", 1209600, json])
+                            Redis.query( ["SETEX", "logger:#{msg.channel_id}:#{msg.id}", 1209600, json])
                         end
                     end
                 end
@@ -173,11 +174,15 @@ defmodule DiscordBot.EventHandlers do
                 # We need to get the old message
                 redix_query = "logger:#{channel_id}:#{updated_message.id}"
 
-                {:ok, data} = Redix.command(:redix, ["GET", redix_query])
+                {:ok, data} = Redis.query( ["GET", redix_query])
 
-                if data != nil do
+                if data != nil && data != :undefined do
                     # Now we need to store the old content and then update it
                     json = Poison.decode!(data)
+
+                    if !Map.has_key?(updated_message, :author) do
+                        IO.puts "ERROR: Invalid Author Caught: #{json}"
+                    end
 
                     # Log Edit
                     DiscordBot.Logger.send_edit_log(server.log_channel, create_user_json(updated_message.author), "**Messaged edited in <##{channel_id}>**", json["content"], updated_message.content, @informative)
@@ -185,7 +190,7 @@ defmodule DiscordBot.EventHandlers do
                     # now we have to just reset the ttl and stuff since you can't update :?
                     njson = ~s({"user": {"name": "#{json["user"]["name"]}", "id": #{json["user"]["id"]}, "discriminator": "#{json["user"]["discriminator"]}", "avatar": "#{json["user"]["avatar"]}"}, "channel_id": #{json["channel_id"]}, "guild_id": #{json["guild_id"]}, "content": "#{updated_message.content}"})
 
-                    Redix.command!(:redix, ["SETEX", "logger:#{channel_id}:#{updated_message.id}", 1209600, njson])
+                    Redis.query( ["SETEX", "logger:#{channel_id}:#{updated_message.id}", 1209600, njson])
                 end
 
             end
@@ -200,24 +205,24 @@ defmodule DiscordBot.EventHandlers do
 
         redix_query = "logger:#{channel_id}:#{id}"
 
-        {:ok, data} = Redix.command(:redix, ["GET", redix_query])
+        {:ok, data} = Redis.query( ["GET", redix_query])
 
         if data != nil do # we found a message
             # Let's delete it from the cache
-            Redix.command(:redix, ["DEL", redix_query])
+            Redis.query( ["DEL", redix_query])
 
             try do
-              json = Poison.decode!(data)
+                json = Poison.decode!(data)
 
                 if json != nil do
                     server = find_server(json["guild_id"])
 
-                  if server != nil && server.log_channel != nil do
-                      DiscordBot.Logger.send_log(server.log_channel, json["user"], "**Message sent by <@!#{json["user"]["id"]}> deleted in <##{channel_id}>**\n#{json["content"]}", @informative)
-                  end
-              end
+                    if server != nil && server.log_channel != nil do
+                        DiscordBot.Logger.send_log(server.log_channel, json["user"], "**Message sent by <@!#{json["user"]["id"]}> deleted in <##{channel_id}>**\n#{json["content"]}", @informative)
+                    end
+                end
             rescue
-              _e in Poison.SyntaxError -> IO.puts "Error parsing JSON: #{data}"
+                _e in Poison.SyntaxError -> IO.puts "Error parsing JSON: #{data}"
             end
         else
             channel = channel_or_get(channel_id)

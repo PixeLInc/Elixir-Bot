@@ -8,8 +8,7 @@ defmodule DiscordBot.Supervisor do
     def init(:ok) do
         children = [
              worker(DiscordBot.EventHandlers, []),
-             worker(DiscordBot.Scheduler, []),
-             worker(Redix, [[], [name: :redix]]), # Global variable thx
+             worker(DiscordBot.Scheduler, []) 
         ]
 
         setup_ets()

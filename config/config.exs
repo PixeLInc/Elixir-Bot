@@ -34,5 +34,13 @@ import_config "secret.exs"
 config :logger,
   level: :warn
 
+config :redis_connection_pool, [
+  full_url: "redis://172.17.0.3:6379",
+  reconnect: :no_reconnect,
+  pool_name: :"Redis.Pool",
+  pool_size: 10,
+  pool_max_overflow: 1
+]
+
 config :discord_bot, DiscordBot.Scheduler,
   jobs: []

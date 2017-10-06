@@ -29,3 +29,6 @@ mix.lock
 /config/secret.exs
 
 start.bat
+
+.data/
+rel/
