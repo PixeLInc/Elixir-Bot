@@ -207,7 +207,7 @@ defmodule DiscordBot.EventHandlers do
 
         {:ok, data} = Redis.query( ["GET", redix_query])
 
-        if data != nil do # we found a message
+        if data != nil && data != :undefined do # we found a message
             # Let's delete it from the cache
             Redis.query( ["DEL", redix_query])
 
