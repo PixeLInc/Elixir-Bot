@@ -2,5 +2,7 @@ version: '3'
 services:
   bot:
     build: .
+    container_name: Logger-Bot
   redis:
     image: "redis:latest"
+    container_name: Logger-Bot-Redis
