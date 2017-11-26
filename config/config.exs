@@ -35,7 +35,7 @@ config :logger,
   level: :warn
 
 config :redis_connection_pool, [
-  full_url: "redis://172.17.0.2:6379",
+  full_url: "redis://redis:6379",
   reconnect: :no_reconnect,
   pool_name: :"Redis.Pool",
   pool_size: 10,
