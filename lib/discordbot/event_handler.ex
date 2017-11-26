@@ -293,10 +293,10 @@ defmodule DiscordBot.EventHandlers do
     defp channel_or_get(channel_id) do
         if channel_id != nil do
             channel = case Nostrum.Cache.ChannelCache.get(id: channel_id) do
+                {:ok, chan} ->
+                    chan
                 {:error, _atom} ->
                     Api.get_channel!(channel_id)
-                chan ->
-                    chan
             end
 
             channel

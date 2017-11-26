@@ -1,7 +1,7 @@
 defmodule Commands do
     alias Nostrum.Api
     # DiscordEX command handling, basically.
-    
+
     def command_from_message(message, prefix) do
         content = message.content
         if String.starts_with?(content, prefix) do
@@ -12,7 +12,7 @@ defmodule Commands do
                 nil ->
                     {cmd, {}}
                 m ->
-                    {cmd, List.to_tuple(String.split(m, " "))}# I wanted a fucking args array.. >:( 
+                    {cmd, List.to_tuple(String.split(m, " "))}# I wanted a fucking args array.. >:(
             end
         else
             {nil, content}
@@ -42,7 +42,7 @@ defmodule Commands do
                     if String.downcase(elem(args, 0)) == "m" do
                         to_modify = String.to_atom(elem(args, 1)) # The thing they want to modify in the settings.
                         new_value = case args_length > 3 do
-                            true -> 
+                            true ->
                                 combine_args(args, 2)
                             false ->
                                 convert_to_type(elem(args, 2))
@@ -91,7 +91,7 @@ ban_message: #{server.ban_message}
            else
                :observer.stop
            end
-       end 
+       end
     end
 
     defp _execute_command({"announce", args, _channel, _guild}, message, _state) do
@@ -100,8 +100,8 @@ ban_message: #{server.ban_message}
         :ets.select(:servers_map, :ets.fun2ms(&(&1)))
         |> Enum.each(fn {id, server} ->
             if server != nil && server.log_channel != nil do
-                IO.puts "Fam: #{id}"
-                # Api.create_message!(server.log_channel, combine_args(args, 0))
+                # IO.puts "Fam: #{id}"
+                Api.create_message!(server.log_channel, combine_args(args, 0))
               end
             end)
       end
@@ -113,9 +113,9 @@ ban_message: #{server.ban_message}
         guild_count = Enum.count(guilds_list)
 
         # This is probably gonna be removed if the bot ever gets too many guilds tbh
-        channel_count = Nostrum.Cache.Guild.GuildServer.get_value_from_all(:channels) 
-        |> Enum.to_list 
-        |> List.flatten 
+        channel_count = Nostrum.Cache.Guild.GuildServer.get_value_from_all(:channels)
+        |> Enum.to_list
+        |> List.flatten
         |> Enum.count
 
         # This too..
@@ -198,6 +198,15 @@ ban_message: #{server.ban_message}
         }], false)
     end
 
+    defp _execute_command({"eval", args, channel, guild}, message, _state) do
+      if dev_check?(message.author) do
+        eval_code = combine_args(args, 1)
+        {:ok, res} = Code.eval_string(~s(eval_code), [args, channel, guild, message])
+
+        Api.create_message!(message.channel_id, "```#{res}```")
+      end
+    end
+
     # Default Handler for Invalid Commands
     defp _execute_command({_cmd, _args, _channel, _guild}, _payload, _state) do
         # Fail silently
@@ -228,7 +237,7 @@ ban_message: #{server.ban_message}
     end
 
     defp combine_args(args, to_skip) do
-        args 
+        args
           |> Tuple.to_list
           |> Enum.slice(to_skip .. -1)
           |> Enum.join(" ")
@@ -236,7 +245,7 @@ ban_message: #{server.ban_message}
 
     # Me, or the owner /shrug
     defp owner_check?(guild, sender) do
-        (guild.owner_id == sender.id || sender.id == 117789813427535878) 
+        (guild.owner_id == sender.id || sender.id == 117789813427535878)
     end
 
     defp dev_check?(sender) do
