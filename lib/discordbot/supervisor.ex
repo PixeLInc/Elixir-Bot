@@ -8,7 +8,6 @@ defmodule DiscordBot.Supervisor do
     def init(:ok) do
         children = [
              worker(DiscordBot.EventHandlers, []),
-             worker(DiscordBot.Scheduler, []) 
         ]
 
         setup_ets()

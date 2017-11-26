@@ -18,6 +18,8 @@ defmodule DiscordBot.EventHandlers do
         dt = DateTime.utc_now
         Api.update_status(:online, "Loggin' the logs")
         IO.puts("Bot ready at #{dt.month}/#{dt.day}/#{dt.year} #{dt.hour}:#{dt.minute}:#{dt.second}")
+
+        IO.puts "Logger Bot v1.3"
         {:ok, state}
     end
 
@@ -179,10 +181,6 @@ defmodule DiscordBot.EventHandlers do
                 if data != nil && data != :undefined do
                     # Now we need to store the old content and then update it
                     json = Poison.decode!(data)
-
-                    if !Map.has_key?(updated_message, :author) do
-                        IO.puts "ERROR: Invalid Author Caught: #{json}"
-                    end
 
                     # Log Edit
                     DiscordBot.Logger.send_edit_log(server.log_channel, create_user_json(updated_message.author), "**Messaged edited in <##{channel_id}>**", json["content"], updated_message.content, @informative)
