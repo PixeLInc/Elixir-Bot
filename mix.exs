@@ -24,7 +24,7 @@ defmodule DiscordBot.Mixfile do
   defp deps do
     [
         #{:nostrum, "~> 0.1"},
-        {:nostrum, git: "https://github.com/Kraigie/nostrum.git", ref: "947576e5b7797662283631941c85c72b56883a49"},
+        {:nostrum, git: "https://github.com/PixeLInc/nostrum.git", branch: "master"},
         {:gun, git: "https://github.com/ninenines/gun.git", override: true},
         {:redis_connection_pool, "~> 0.1.5"},
         {:ex2ms, "~> 1.0"}

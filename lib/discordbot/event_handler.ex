@@ -16,7 +16,7 @@ defmodule DiscordBot.EventHandlers do
 
     def handle_event({:READY, _, _w_state}, state) do
         dt = DateTime.utc_now
-        Api.update_status(:online, "Loggin' the logs")
+        Api.update_status(:online, "your every move..", 3)
         IO.puts("Bot ready at #{dt.month}/#{dt.day}/#{dt.year} #{dt.hour}:#{dt.minute}:#{dt.second}")
 
         IO.puts "Logger Bot v1.3"
