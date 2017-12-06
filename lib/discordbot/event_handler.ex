@@ -58,7 +58,14 @@ defmodule DiscordBot.EventHandlers do
 
       with {:ok, dm_channel} <- Api.create_dm(guild.owner_id)
       do
-        Api.create_message(dm_channel.id, "Hey! I just joined your server.\nI created a server profile for you.\nIf you have any questions, contact PixeL#7065 on Discord.")
+        IO.puts "Sending the owner of the new server a DM | #{dm_channel["id"]}"
+
+        case Api.create_message(dm_channel["id"], "Hey! I just joined your server.\nI created a server profile for you which you can edit with %settings.\nIf you have any questions, contact PixeL#7065 on Discord.") do
+          {:ok, msg} ->
+            :ok
+          {:error, error} ->
+            IO.puts "Failed to send message to owner: #{inspect error}"
+        end
       else
         {:error, _reason} ->
           IO.puts "Failed to get server owner from #{guild.name}"

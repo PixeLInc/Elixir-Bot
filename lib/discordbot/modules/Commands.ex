@@ -35,7 +35,7 @@ defmodule Commands do
     defp _execute_command({"settings", args, channel, guild}, message, _state) do
         if owner_check?(guild, message.author) do #it's either me or the owner running it
             # Let's make sure they even have a server profile..
-            server = DiscordBot.EventHandlers.find_server(guild.id)
+            {:ok, server} = DiscordBot.EventHandlers.find_server(guild.id)
             if server != nil do
                 args_length = tuple_size(args)
                 if args_length >= 3 do
