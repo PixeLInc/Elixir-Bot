@@ -84,7 +84,7 @@ ban_message: #{server.ban_message}
         end
     end
 
-    defp _execute_command({"mem", args, _channel, _guild}, message, _state) do
+    defp _execute_command({"mem", args, _channel, _guild}, message) do
        if dev_check?(message.author) do
            if String.downcase(elem(args, 0)) == "e" do
                :observer.start
@@ -94,7 +94,7 @@ ban_message: #{server.ban_message}
        end
     end
 
-    defp _execute_command({"announce", args, _channel, _guild}, message, _state) do
+    defp _execute_command({"announce", args, _channel, _guild}, message) do
       if dev_check?(message.author) do
 
         :ets.select(:servers_map, :ets.fun2ms(&(&1)))
@@ -108,7 +108,7 @@ ban_message: #{server.ban_message}
     end
 
     # I don't take credit enough for my work :/
-    defp _execute_command({"about", _args, channel, _guild}, _payload, _state) do
+    defp _execute_command({"about", _args, channel, _guild}, _payload) do
         {:ok, guilds_list} = Api.get_current_users_guilds()
         guild_count = Enum.count(guilds_list)
 
@@ -198,7 +198,7 @@ ban_message: #{server.ban_message}
         }], false)
     end
 
-    defp _execute_command({"eval", args, channel, guild}, message, _state) do
+    defp _execute_command({"eval", args, channel, guild}, message) do
       if dev_check?(message.author) do
         eval_code = combine_args(args, 1)
         {:ok, res} = Code.eval_string(~s(eval_code), [args, channel, guild, message])
@@ -208,7 +208,7 @@ ban_message: #{server.ban_message}
     end
 
     # Default Handler for Invalid Commands
-    defp _execute_command({_cmd, _args, _channel, _guild}, _payload, _state) do
+    defp _execute_command({_cmd, _args, _channel, _guild}, _payload) do
         # Fail silently
         # IO.puts "User entered invalid command '#{cmd}'"
     end
