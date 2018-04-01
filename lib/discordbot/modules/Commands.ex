@@ -19,20 +19,20 @@ defmodule Commands do
         end
     end
 
-    def command_parser({message, channel, guild}, state) do
+    def command_parser({message, channel, guild}) do
         # Shouldnt be from a bot since we do that via :MESSAGE_CREATE
         case command_from_message(message, "%") do
             {nil, _content} ->
                 nil # Dont do anything since it's not a command
             {cmd, msg} ->
-                _execute_command({cmd, msg, channel, guild}, message, state)
+                _execute_command({cmd, msg, channel, guild}, message)
         end
     end
 
     # Insert all the commands here
 
     # Allow server owners, and me to modify their server layout
-    defp _execute_command({"settings", args, channel, guild}, message, _state) do
+    defp _execute_command({"settings", args, channel, guild}, message) do
         if owner_check?(guild, message.author) do #it's either me or the owner running it
             # Let's make sure they even have a server profile..
             {:ok, server} = DiscordBot.EventHandlers.find_server(guild.id)

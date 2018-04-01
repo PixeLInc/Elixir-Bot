@@ -1,5 +1,5 @@
 defmodule DiscordBot.EventHandlers do
-    use Nostrum.Consumer
+    use Nostrum.TaskedConsumer
     alias Nostrum.Api
     alias RedisPool, as: Redis
 
@@ -11,19 +11,18 @@ defmodule DiscordBot.EventHandlers do
     def start_link do
         DiscordBot.Server.load_servers()
 
-        Consumer.start_link(__MODULE__, :ok)
+        TaskedConsumer.start_link(__MODULE__)
     end
 
-    def handle_event({:READY, _, _w_state}, state) do
+    def handle_event({:READY, _, _w_state}) do
         dt = DateTime.utc_now
         Api.update_status(:online, "your every move..", 3)
         IO.puts("Bot ready at #{dt.month}/#{dt.day}/#{dt.year} #{dt.hour}:#{dt.minute}:#{dt.second}")
 
         IO.puts "Logger Bot v1.3"
-        {:ok, state}
     end
 
-    def handle_event({:GUILD_ROLE_CREATE, {gid, _role}, _ws_state}, state) do
+    def handle_event({:GUILD_ROLE_CREATE, {gid, _role}, _ws_state}) do
       with {:ok, server} <- find_server(gid),
            guild = guild_or_get(gid)
       do
@@ -31,11 +30,9 @@ defmodule DiscordBot.EventHandlers do
           DiscordBot.Logger.send_log(server.log_channel, guild, "**A new role has been created**", @informative)
         end
       end
-
-      {:ok, state}
     end
 
-    def handle_event({:GUILD_ROLE_DELETE, {gid, role}, _ws_state}, state) do
+    def handle_event({:GUILD_ROLE_DELETE, {gid, role}, _ws_state}) do
       with {:ok, server} <- find_server(gid),
            guild = guild_or_get(gid)
       do
@@ -49,11 +46,9 @@ defmodule DiscordBot.EventHandlers do
           DiscordBot.Logger.send_log(server.log_channel, guild, message, @informative)
         end
       end
-
-      {:ok, state}
     end
 
-    def handle_event({:GUILD_CREATE, {guild}, _ws_state}, state) do
+    def handle_event({:GUILD_CREATE, {guild}, _ws_state}) do
       IO.puts "I joined a new guild named #{guild.name}!"
 
       with {:ok, dm_channel} <- Api.create_dm(guild.owner_id)
@@ -73,33 +68,27 @@ defmodule DiscordBot.EventHandlers do
 
       # Piped just because I wanted to feel cool
       guild |> DiscordBot.Server.create_server_profile
-
-      {:ok, state}
     end
 
-    def handle_event({:GUILD_BAN_ADD, {id, data}, _ws_state}, state) do
+    def handle_event({:GUILD_BAN_ADD, {id, data}, _ws_state}) do
       with {:ok, server} <- find_server(id)
       do
         if server.log_channel && server.log_bans do
           DiscordBot.Logger.send_log(server.log_channel, create_user_json(data.user), "**User has been banned!**", @bad)
         end
       end
-
-      {:ok, state}
     end
 
-    def handle_event({:GUILD_BAN_REMOVE, {id, data}, _ws_state}, state) do
+    def handle_event({:GUILD_BAN_REMOVE, {id, data}, _ws_state}) do
       with {:ok, server} <- find_server(id)
       do
         if server.log_channel && server.log_bans do
           DiscordBot.Logger.send_log(server.log_channel, create_user_json(data.user), "**User has been unbanned!**", @good)
         end
       end
-
-      {:ok, state}
     end
 
-    def handle_event({:GUILD_MEMBER_ADD, {gid, member}, _ws_state}, state) do
+    def handle_event({:GUILD_MEMBER_ADD, {gid, member}, _ws_state}) do
       with {:ok, server} <- find_server(gid)
       do
         if server.auto_role do
@@ -111,11 +100,9 @@ defmodule DiscordBot.EventHandlers do
           DiscordBot.Logger.send_log(server.log_channel, create_user_json(member.user), "**User has joined the server**", @good)
         end
       end
-
-     {:ok, state}
     end
 
-    def handle_event({:GUILD_MEMBER_REMOVE, {gid, member}, _ws_state}, state) do
+    def handle_event({:GUILD_MEMBER_REMOVE, {gid, member}, _ws_state}) do
       with {:ok, server} <- find_server(gid)
       do
         if server.log_channel && server.log_leave do
@@ -123,11 +110,9 @@ defmodule DiscordBot.EventHandlers do
           DiscordBot.Logger.send_log(server.log_channel, create_user_json(member.user), "**User has left the server**", @bad)
         end
       end
-
-      {:ok, state}
     end
 
-    def handle_event({:MESSAGE_CREATE, {msg}, _ws_state}, state) do
+    def handle_event({:MESSAGE_CREATE, {msg}, _ws_state}) do
       if !is_bot?(msg.author) do
         # Let's log the messages into our cache if the server exists inside of the list
         with channel = channel_or_get(msg.channel_id),
@@ -142,7 +127,7 @@ defmodule DiscordBot.EventHandlers do
 
           # Let's parse this and throw in the args
           spawn fn ->
-            Commands.command_parser({msg, channel, guild}, state)
+            Commands.command_parser({msg, channel, guild})
           end
 
           if server.cache_messages do
@@ -154,11 +139,9 @@ defmodule DiscordBot.EventHandlers do
             IO.puts "The bot is in a server without a profile! | cid: #{msg.channel_id}"
         end
       end
-
-      {:ok, state}
     end
 
-    def handle_event({:MESSAGE_UPDATE, {updated_message}, _ws_state}, state) do # smh why cant you store the channel and guild in message :(
+    def handle_event({:MESSAGE_UPDATE, {updated_message}, _ws_state}) do # smh why cant you store the channel and guild in message :(
       channel_id = updated_message.channel_id
 
       with channel = channel_or_get(channel_id),
@@ -175,11 +158,9 @@ defmodule DiscordBot.EventHandlers do
 
         Redis.query( ["SETEX", "logger:#{channel_id}:#{updated_message.id}", 1209600, njson])
       end
-
-      {:ok, state}
     end
 
-    def handle_event({:MESSAGE_DELETE, {msg}, _ws_state}, state) do
+    def handle_event({:MESSAGE_DELETE, {msg}, _ws_state}) do
       id = msg.id
       channel_id = msg.channel_id
 
@@ -204,11 +185,9 @@ defmodule DiscordBot.EventHandlers do
             end
           end
       end
-
-      {:ok, state}
     end
 
-    def handle_event({:MESSAGE_DELETE_BULK, {updated_messages}, _ws_state}, state) do
+    def handle_event({:MESSAGE_DELETE_BULK, {updated_messages}, _ws_state}) do
       # %{channel_id, ids: [message_ids]}
 
       with channel = channel_or_get(updated_messages.channel_id),
@@ -226,13 +205,11 @@ defmodule DiscordBot.EventHandlers do
           DiscordBot.Logger.send_log(server.log_channel, guild, "**#{message_count} messages deleted in <##{updated_messages.channel_id}>**", @informative)
         end
       end
-
-      {:ok, state}
     end
 
     # To stop crashes and such..
-    def handle_event(_, state) do
-      {:ok, state}
+    def handle_event(_) do
+      :noop
     end
 
     defp is_bot?(user) do
